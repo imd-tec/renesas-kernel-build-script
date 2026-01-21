@@ -1,2 +1,3 @@
-renesas-kernel-module*
+renesas-kernel-module-*/
 renesas-rz-linux-cip-dev/
+build/out_of_tree_modules
