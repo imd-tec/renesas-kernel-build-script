@@ -10,21 +10,21 @@ CLONE_URL="git@github.com:imd-tec"
 # Repo list
 KERNEL="renesas-rz-linux-cip-dev"
 KERNEL_MODULES=(
-  renesas-kernel-nxp-wlan
-  renesas-kernel-module-vspm
-  renesas-kernel-module-vspmif
-  renesas-kernel-module-mali
-  renesas-kernel-module-udmabuf
-  renesas-kernel-module-mmngrbuf
+  kernel-nxp-wlan
+  kernel-module-vspm
+  kernel-module-vspmif
+  kernel-module-mali
+  kernel-module-udmabuf
+  kernel-module-mmngrbuf
 )
 # Use associative array for build directories
 declare -A MODULE_BUILD_DIRS=(
-  [renesas-kernel-nxp-wlan]="renesas-kernel-nxp-wlan/mxm_wifiex/wlan_src"
-  [renesas-kernel-module-vspm]="renesas-kernel-module-vspm/vspm-module/files/vspm/drv"
-  [renesas-kernel-module-vspmif]="renesas-kernel-module-vspmif/vspm_if-module/files/vspm_if/drv"
-  [renesas-kernel-module-mali]="renesas-kernel-module-mali/drivers/gpu/arm/midgard"
-  [renesas-kernel-module-udmabuf]="renesas-kernel-module-udmabuf"
-  [renesas-kernel-module-mmngrbuf]="renesas-kernel-module-mmngrbuf/mmngr_drv/mmngrbuf/mmngrbuf-module/files/mmngrbuf/drv"
+  [kernel-nxp-wlan]="kernel-nxp-wlan/mxm_wifiex/wlan_src"
+  [kernel-module-vspm]="kernel-module-vspm/vspm-module/files/vspm/drv"
+  [kernel-module-vspmif]="kernel-module-vspmif/vspm_if-module/files/vspm_if/drv"
+  [kernel-module-mali]="kernel-module-mali/drivers/gpu/arm/midgard"
+  [kernel-module-udmabuf]="kernel-module-udmabuf"
+  [kernel-module-mmngrbuf]="kernel-module-mmngrbuf/mmngr_drv/mmngrbuf/mmngrbuf-module/files/mmngrbuf/drv"
 )
 
 SCRIPT_DIR="$(pwd)"
@@ -65,11 +65,11 @@ build_module() {
   export KERNELDIR="$KERNELSRC"
 
   # Per-module special logic
-  if [[ "$module_name" == "renesas-kernel-module-vspm" ]]; then
+  if [[ "$module_name" == "kernel-module-vspm" ]]; then
     make -j "$(nproc)"
     make install
     cp Module.symvers "${KERNELSRC}/include/vspm.symvers"
-  elif [[ "$module_name" == "renesas-kernel-module-mmngrbuf" ]]; then
+  elif [[ "$module_name" == "kernel-module-mmngrbuf" ]]; then
     MMNGR_CFG="MMNGR_SALVATORX"
     export MMNGR_CONFIG=${MMNGR_CFG}
     export MMNGR_SSP_CONFIG="MMNGR_SSP_DISABLE"
@@ -80,7 +80,7 @@ build_module() {
     cp *.ko "$OUTOFTREEFOLDER/$module_name/" 2>/dev/null || true
     # Also build mmngr
     popd > /dev/null
-    pushd "renesas-kernel-module-mmngrbuf/mmngr_drv/mmngr/mmngr-module/files/mmngr/drv" > /dev/null
+    pushd "kernel-module-mmngrbuf/mmngr_drv/mmngr/mmngr-module/files/mmngr/drv" > /dev/null
     export KDIR="$KERNELSRC"
     export KERNELDIR="$KERNELSRC"
     make -j "$(nproc)"
@@ -96,12 +96,12 @@ build_module() {
 }
 
 # Build VSPM first as other modules depend on its symbols
-build_module "renesas-kernel-module-vspm"
+build_module "kernel-module-vspm"
 
 # Build the rest in parallel
 pids=()
 for MODULE in "${KERNEL_MODULES[@]}"; do
-  if [ "$MODULE" != "renesas-kernel-module-vspm" ]; then
+  if [ "$MODULE" != "kernel-module-vspm" ]; then
     build_module "$MODULE" &
     pids+=("$!")
   fi
