@@ -1,7 +1,10 @@
 
 #!/bin/bash
+# Script to build and deploy Renesas RZV2H kernel and modules
+# Usage: ./rz.sh [IP_ADDRESS] [SSH_PORT]
 set -euo pipefail
-PORT=22
+IP="${1:-172.16.30.100}"
+PORT="${2:-22}"
 MODULES_FOLDER="/tmp/rzv2h_modules"
 CLONE_URL="git@github.com:imd-tec"
 # Repo list
@@ -23,34 +26,19 @@ declare -A MODULE_BUILD_DIRS=(
   [renesas-kernel-module-udmabuf]="renesas-kernel-module-udmabuf"
   [renesas-kernel-module-mmngrbuf]="renesas-kernel-module-mmngrbuf/mmngr_drv/mmngrbuf/mmngrbuf-module/files/mmngrbuf/drv"
 )
-IP="172.16.30.100"
 
 SCRIPT_DIR="$(pwd)"
 OUTOFTREEFOLDER="${SCRIPT_DIR}/build/out_of_tree_modules"
-
+# Source Yocto environment
 . /opt/poky/3.1.33/environment-setup-aarch64-poky-linux
-
+# Export common variables
 export KERNELSRC="${SCRIPT_DIR}/${KERNEL}"
 export ARCH=arm64
 export INCSHARED="$(mktemp -d)"
 export CP=cp
 export OUTOFTREEFOLDER
-
+# Create out-of-tree folder
 mkdir -p "$OUTOFTREEFOLDER"
-
-clone_repo() {
-  local repo="$1"
-  if [ ! -d "$repo" ]; then
-    git clone "$CLONE_URL/$repo.git"
-  fi
-}
-
-# Clone kernel and modules
-clone_repo "$KERNEL"
-for MODULE in "${KERNEL_MODULES[@]}"; do
-  clone_repo "$MODULE"
-done
-
 # Build kernel and modules
 pushd "$KERNELSRC" > /dev/null
 make defconfig
@@ -60,9 +48,7 @@ INSTALL_MOD_PATH="$MODULES_FOLDER" DTC_FLAGS=-@ make -j 24 all modules_prepare
 rm -rf "$MODULES_FOLDER"
 popd > /dev/null
 
-echo "Current dir: $(pwd)"
-
-
+# Function to build a module
 build_module() {
   local module_name="$1"
   local build_dir="${MODULE_BUILD_DIRS[$module_name]:-}"
@@ -126,7 +112,7 @@ for pid in "${pids[@]}"; do
 done
 
 echo "Finished building all modules"
-
+# Install modules to staging folder
 pushd "$KERNELSRC" > /dev/null
 echo "Done building modules, installing to $MODULES_FOLDER"
 INSTALL_MOD_PATH="$MODULES_FOLDER" make -j 24 modules_install
@@ -134,14 +120,11 @@ INSTALL_MOD_PATH="$MODULES_FOLDER" make -j 24 modules_install
 echo "Preparing kernel module deployment to $IP"
 echo "Making tar of kernel modules"
 rm -rf "$MODULES_FOLDER/lib/modules/"*/build "$MODULES_FOLDER/lib/modules/"*/source
-
 # Copy out-of-tree modules
 popd > /dev/null
 cp -r "$OUTOFTREEFOLDER"/* "$MODULES_FOLDER/lib/modules/$VERSIONS_STRING/" || true
-find "$MODULES_FOLDER/lib/modules/" -name "*.ko" -exec echo "Module: {}" \;
-
 tar -czf /tmp/lib.tar.gz -C "$MODULES_FOLDER" lib
-
+# Deploy to target
 pushd "$KERNELSRC" > /dev/null
 echo "Copying files to $IP"
 scp -P "$PORT" -O /tmp/lib.tar.gz root@"$IP":/tmp/
