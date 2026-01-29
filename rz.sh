@@ -3,6 +3,7 @@
 # Script to build and deploy Renesas RZV2H kernel and modules
 # Usage: ./rz.sh [IP_ADDRESS] [SSH_PORT]
 set -euo pipefail
+
 IP="${1:-172.16.30.100}"
 PORT="${2:-22}"
 MODULES_FOLDER="/tmp/rzv2h_modules"
@@ -16,6 +17,7 @@ KERNEL_MODULES=(
   kernel-module-mali
   kernel-module-udmabuf
   kernel-module-mmngrbuf
+  kernel-module-uvcs-drv
 )
 # Use associative array for build directories
 declare -A MODULE_BUILD_DIRS=(
@@ -25,6 +27,7 @@ declare -A MODULE_BUILD_DIRS=(
   [kernel-module-mali]="kernel-module-mali/drivers/gpu/arm/midgard"
   [kernel-module-udmabuf]="kernel-module-udmabuf"
   [kernel-module-mmngrbuf]="kernel-module-mmngrbuf/mmngr_drv/mmngrbuf/mmngrbuf-module/files/mmngrbuf/drv"
+  [kernel-module-uvcs-drv]="kernel-module-uvcs-drv/src/makefile"
 )
 
 SCRIPT_DIR="$(pwd)"
@@ -84,6 +87,11 @@ build_module() {
     export KDIR="$KERNELSRC"
     export KERNELDIR="$KERNELSRC"
     make -j "$(nproc)"
+  elif [[ "$module_name" == "kernel-module-uvcs-drv" ]]; then
+    export UVCS_SRC=..
+    export VCP4_SRC=..
+    export UVCS_INC=../..
+    make -j "$(nproc)"
   else
     make -j "$(nproc)"
   fi
@@ -123,12 +131,13 @@ rm -rf "$MODULES_FOLDER/lib/modules/"*/build "$MODULES_FOLDER/lib/modules/"*/sou
 # Copy out-of-tree modules
 popd > /dev/null
 cp -r "$OUTOFTREEFOLDER"/* "$MODULES_FOLDER/lib/modules/$VERSIONS_STRING/" || true
+depmod -b "$MODULES_FOLDER" -a "$VERSIONS_STRING"
 tar -czf /tmp/lib.tar.gz -C "$MODULES_FOLDER" lib
 # Deploy to target
 pushd "$KERNELSRC" > /dev/null
 echo "Copying files to $IP"
 scp -P "$PORT" -O /tmp/lib.tar.gz root@"$IP":/tmp/
 scp -P "$PORT" -O arch/arm64/boot/dts/renesas/*imdt*.dtb arch/arm64/boot/Image root@"$IP":/boot/
-ssh -p "$PORT" root@"$IP" "rm -Rf /lib/modules/5*/ && tar -xzf /tmp/lib.tar.gz -C / && /sbin/depmod -a $VERSIONS_STRING && sync"
+ssh -p "$PORT" root@"$IP" "rm -Rf /lib/modules/5*/ && tar -xzf /tmp/lib.tar.gz -C / && sync"
 echo "Deployment complete for $VERSIONS_STRING"
 popd > /dev/null

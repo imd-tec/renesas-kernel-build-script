@@ -3,11 +3,12 @@ This repository provides a script for building common out of tree kernel modules
 
 ##  Instructions
 You will need to copy the following kernel module repositories into this folder:
-1. kernel-module-mali 
-2. kernel-module-mmngrbuf
-3. kernel-module-udmabuf
+1. kernel-module-mali - required bygraphics feature
+2. kernel-module-mmngrbuf   
+3. kernel-module-udmabuf - required by drpai feature
 4. kernel-module-vspm
 5. kernel-module-vspmif
+6. kernel-module-uvcs-drv - required by codecs feature
 
 Its recommend that you obtain these folders from using devtool modify within Yocto and then pushing them to a git server.
 
