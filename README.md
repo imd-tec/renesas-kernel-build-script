@@ -3,7 +3,7 @@ This repository provides a script for building common out of tree kernel modules
 
 ##  Instructions
 You will need to copy the following kernel module repositories into this folder:
-1. kernel-module-mali - required bygraphics feature
+1. kernel-module-mali - required by graphics feature
 2. kernel-module-mmngrbuf   
 3. kernel-module-udmabuf - required by drpai feature
 4. kernel-module-vspm
