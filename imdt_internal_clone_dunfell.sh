@@ -9,6 +9,7 @@ KERNEL_MODULES=(
   kernel-module-mali
   kernel-module-udmabuf
   kernel-module-mmngrbuf
+  kernel-module-uvcs-drv
 )
 KERNEL="renesas-rz-linux-cip-dev"
 CLONE_URL="git@github.com:imd-tec"
