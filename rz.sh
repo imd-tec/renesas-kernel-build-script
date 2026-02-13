@@ -3,7 +3,7 @@
 # Script to build and deploy Renesas RZV2H kernel and modules
 # Usage: ./rz.sh [IP_ADDRESS] [SSH_PORT]
 set -euo pipefail
-
+set -x
 IP="${1:-172.16.30.100}"
 PORT="${2:-22}"
 MODULES_FOLDER="/tmp/rzv2h_modules"
@@ -11,29 +11,29 @@ CLONE_URL="git@github.com:imd-tec"
 # Repo list
 KERNEL="renesas-rz-linux-cip-dev"
 KERNEL_MODULES=(
-  kernel-nxp-wlan
-  kernel-module-vspm
-  kernel-module-vspmif
-  kernel-module-mali
-  kernel-module-udmabuf
+  # kernel-nxp-wlan
+  # kernel-module-vspm
+  # kernel-module-vspmif
+  # kernel-module-mali
+  # kernel-module-udmabuf
   kernel-module-mmngrbuf
-  kernel-module-uvcs-drv
+  # kernel-module-uvcs-drv
 )
 # Use associative array for build directories
 declare -A MODULE_BUILD_DIRS=(
-  [kernel-nxp-wlan]="kernel-nxp-wlan/mxm_wifiex/wlan_src"
-  [kernel-module-vspm]="kernel-module-vspm/vspm-module/files/vspm/drv"
-  [kernel-module-vspmif]="kernel-module-vspmif/vspm_if-module/files/vspm_if/drv"
-  [kernel-module-mali]="kernel-module-mali/drivers/gpu/arm/midgard"
-  [kernel-module-udmabuf]="kernel-module-udmabuf"
+  # [kernel-nxp-wlan]="kernel-nxp-wlan/mxm_wifiex/wlan_src"
+  # [kernel-module-vspm]="kernel-module-vspm/vspm-module/files/vspm/drv"
+  # [kernel-module-vspmif]="kernel-module-vspmif/vspm_if-module/files/vspm_if/drv"
+  # [kernel-module-mali]="kernel-module-mali/drivers/gpu/arm/midgard"
+  # [kernel-module-udmabuf]="kernel-module-udmabuf"
   [kernel-module-mmngrbuf]="kernel-module-mmngrbuf/mmngr_drv/mmngrbuf/mmngrbuf-module/files/mmngrbuf/drv"
-  [kernel-module-uvcs-drv]="kernel-module-uvcs-drv/src/makefile"
+  # [kernel-module-uvcs-drv]="kernel-module-uvcs-drv/src/makefile"
 )
 
 SCRIPT_DIR="$(pwd)"
 OUTOFTREEFOLDER="${SCRIPT_DIR}/build/out_of_tree_modules"
 # Source Yocto environment
-. /opt/poky/3.1.33/environment-setup-aarch64-poky-linux
+. /opt/poky/5.0.15/environment-setup-cortexa55-poky-linux 
 # Export common variables
 export KERNELSRC="${SCRIPT_DIR}/${KERNEL}"
 export ARCH=arm64
@@ -104,7 +104,7 @@ build_module() {
 }
 
 # Build VSPM first as other modules depend on its symbols
-build_module "kernel-module-vspm"
+#build_module "kernel-module-vspm"
 
 # Build the rest in parallel
 pids=()
