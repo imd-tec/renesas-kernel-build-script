@@ -3,13 +3,12 @@
 set -euo pipefail
 echo "Cloning repositories..."
 KERNEL_MODULES=(
-  # kernel-nxp-wlan
-  # kernel-module-vspm
-  # kernel-module-vspmif
-  # kernel-module-mali
-#  kernel-module-udmabuf
+  kernel-nxp-wlan
+  kernel-module-vspm
+  kernel-module-vspmif
+  kernel-module-mali
   kernel-module-mmngrbuf
-#  kernel-module-uvcs-drv
+  kernel-module-uvcs-drv
 )
 KERNEL="renesas-rz-linux-cip-dev"
 CLONE_URL="git@github.com:imd-tec"
@@ -20,8 +19,8 @@ clone_repo() {
     git clone -b "$branch" "$CLONE_URL/renesas-$repo.git" $repo
   fi
 }
-#clone_repo "$KERNEL" "rzv2-5.10.y"
+clone_repo "$KERNEL" "6.1_rebase-WIP"
 for MODULE in "${KERNEL_MODULES[@]}"; do
    # Clone dunfell branch for each module
-  clone_repo "$MODULE" "6.1" "$MODULE"
+  clone_repo "$MODULE" "scarthgap" "$MODULE"
 done
