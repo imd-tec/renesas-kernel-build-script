@@ -3,7 +3,7 @@
 set -euo pipefail
 echo "Cloning repositories..."
 KERNEL_MODULES=(
-  kernel-nxp-wlan
+  kernel-module-nxp-wlan
   kernel-module-vspm
   kernel-module-vspmif
   kernel-module-mali

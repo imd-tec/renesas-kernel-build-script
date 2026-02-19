@@ -4,6 +4,7 @@
 # Usage: ./rz.sh [IP_ADDRESS] [SSH_PORT]
 set -euo pipefail
 set -x
+
 IP="${1:-172.16.30.100}"
 PORT="${2:-22}"
 MODULES_FOLDER="/tmp/rzv2h_modules"
@@ -11,7 +12,7 @@ CLONE_URL="git@github.com:imd-tec"
 # Repo list
 KERNEL="renesas-rz-linux-cip-dev"
 KERNEL_MODULES=(
-  kernel-nxp-wlan
+  kernel-module-nxp-wlan
   kernel-module-vspm
   kernel-module-vspmif
   kernel-module-mali
@@ -20,7 +21,7 @@ KERNEL_MODULES=(
 )
 # Use associative array for build directories
 declare -A MODULE_BUILD_DIRS=(
-  [kernel-nxp-wlan]="kernel-nxp-wlan/mxm_wifiex/wlan_src"
+  [kernel-module-nxp-wlan]="kernel-module-nxp-wlan"
   [kernel-module-vspm]="kernel-module-vspm/vspm-module/files/vspm/drv"
   [kernel-module-vspmif]="kernel-module-vspmif/vspm_if-module/files/vspm_if/drv"
   [kernel-module-mali]="kernel-module-mali/drivers/gpu/arm/midgard"
@@ -81,7 +82,7 @@ build_module() {
     cp *.ko "$OUTOFTREEFOLDER/$module_name/" 2>/dev/null || true
     # Also build mmngr
     popd > /dev/null
-    pushd "kernel-module-mmngrbuf/mmngr_drv/mmngr/mmngr-module/files/mmngr/drv" > /dev/null
+    pushd "${SCRIPT_DIR}/kernel-module-mmngrbuf/mmngr_drv/mmngr/mmngr-module/files/mmngr/drv" > /dev/null
     export KDIR="$KERNELSRC"
     export KERNELDIR="$KERNELSRC"
     make -j "$(nproc)"
@@ -113,9 +114,14 @@ for MODULE in "${KERNEL_MODULES[@]}"; do
   fi
 done
 # Wait for all background jobs
+build_failed=0
 for pid in "${pids[@]}"; do
-  wait "$pid"
+  if ! wait "$pid"; then
+    echo "ERROR: background build job (pid=$pid) failed" >&2
+    build_failed=1
+  fi
 done
+[[ $build_failed -eq 0 ]] || exit 1
 
 echo "Finished building all modules"
 # Install modules to staging folder
@@ -126,16 +132,25 @@ INSTALL_MOD_PATH="$MODULES_FOLDER" make -j 24 modules_install
 echo "Preparing kernel module deployment to $IP"
 echo "Making tar of kernel modules"
 rm -rf "$MODULES_FOLDER/lib/modules/"*/build "$MODULES_FOLDER/lib/modules/"*/source
+
 # Copy out-of-tree modules
 popd > /dev/null
 cp -r "$OUTOFTREEFOLDER"/* "$MODULES_FOLDER/lib/modules/$VERSIONS_STRING/" || true
 depmod -b "$MODULES_FOLDER" -a "$VERSIONS_STRING"
 tar -czf /tmp/lib.tar.gz -C "$MODULES_FOLDER" lib
+
 # Deploy to target
+echo "Checking target $IP is reachable..."
+if ! ping -c 1 -W 2 "$IP" > /dev/null 2>&1; then
+  echo "ERROR: Target $IP is not reachable. Aborting deployment." >&2
+  exit 1
+fi
+
 pushd "$KERNELSRC" > /dev/null
 echo "Copying files to $IP"
 scp -P "$PORT" -O /tmp/lib.tar.gz root@"$IP":/tmp/
-scp -P "$PORT" -O arch/arm64/boot/dts/renesas/*imdt*.dtb arch/arm64/boot/Image root@"$IP":/boot/
-ssh -p "$PORT" root@"$IP" "rm -Rf /lib/modules/5*/ && tar -xzf /tmp/lib.tar.gz -C / && sync"
+scp -P "$PORT" -O arch/arm64/boot/dts/renesas/*imdt*.dtb root@"$IP":/boot/
+scp -P "$PORT" -O arch/arm64/boot/Image root@"$IP":/boot/Image-"$VERSIONS_STRING"
+ssh -p "$PORT" root@"$IP" "ln -sf Image-${VERSIONS_STRING} /boot/Image && rm -Rf /lib/modules/5*/ && tar -xzf /tmp/lib.tar.gz -C / && sync"
 echo "Deployment complete for $VERSIONS_STRING"
 popd > /dev/null
