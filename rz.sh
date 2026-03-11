@@ -5,6 +5,11 @@
 set -euo pipefail
 set -x
 
+# create aliases for scp and ssh to ignore host key checking. This avoids the issue of a newly flashed target having a different host key and scp/ssh refusing to connect.
+# It also avoids polluting the known_hosts file on the host machine with entries for each new target.
+scpa() { scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$@"; }
+ssha() { ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "$@"; }
+
 IP="${1:-172.16.30.100}"
 PORT="${2:-22}"
 MODULES_FOLDER="/tmp/rzv2h_modules"
@@ -44,6 +49,8 @@ mkdir -p "$OUTOFTREEFOLDER"
 # Build kernel and modules
 pushd "$KERNELSRC" > /dev/null
 make defconfig
+./scripts/kconfig/merge_config.sh .config arch/arm64/configs/imdt.config
+
 VERSIONS_STRING=$(make -s kernelrelease)
 echo "Building kernel version: $VERSIONS_STRING"
 INSTALL_MOD_PATH="$MODULES_FOLDER" DTC_FLAGS=-@ make -j 24 all modules_prepare
@@ -148,9 +155,9 @@ fi
 
 pushd "$KERNELSRC" > /dev/null
 echo "Copying files to $IP"
-scp -P "$PORT" -O /tmp/lib.tar.gz root@"$IP":/tmp/
-scp -P "$PORT" -O arch/arm64/boot/dts/renesas/*imdt*.dtb root@"$IP":/boot/
-scp -P "$PORT" -O arch/arm64/boot/Image root@"$IP":/boot/Image-"$VERSIONS_STRING"
-ssh -p "$PORT" root@"$IP" "ln -sf Image-${VERSIONS_STRING} /boot/Image && rm -Rf /lib/modules/5*/ && tar -xzf /tmp/lib.tar.gz -C / && sync"
+scpa -P "$PORT" -O /tmp/lib.tar.gz root@"$IP":/tmp/
+scpa -P "$PORT" -O arch/arm64/boot/dts/renesas/*imdt*.dtb root@"$IP":/boot/
+scpa -P "$PORT" -O arch/arm64/boot/Image root@"$IP":/boot/Image-"$VERSIONS_STRING"
+ssha -p "$PORT" root@"$IP" "ln -sf Image-${VERSIONS_STRING} /boot/Image && rm -Rf /lib/modules/5*/ && tar -xzf /tmp/lib.tar.gz -C / && sync"
 echo "Deployment complete for $VERSIONS_STRING"
 popd > /dev/null
