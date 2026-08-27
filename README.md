@@ -9,6 +9,7 @@ You will need to copy the following kernel module repositories into this folder:
 4. kernel-module-vspm
 5. kernel-module-vspmif
 6. kernel-module-uvcs-drv - required by codecs feature
+7. kernel-module-edgecortix - required by the SAKURA PCIe accelerator
 
 Its recommend that you obtain these folders from using devtool modify within Yocto and then pushing them to a git server.
 
